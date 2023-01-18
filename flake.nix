@@ -103,46 +103,57 @@
 
             # { lib, buildGoModule, callPackage, fetchFromGitHub, pkgs, inputs }:
 
-            woodpecker-frontend = pkgs.stdenv.mkDerivation rec {
-              name = "woodpecker-frontend";
+            woodpecker-frontend =
+              let
+                nodePackages =
+                  let nodejs = pkgs.nodejs;
 
-              src = ./web;
-
-
-              nativeBuildInputs = [
-                pkgs.nodejs
-              ];
-
-              buildPhase =
-                let
-                  nodeDependencies = ((import ./node-composition.nix {
-                    inherit pkgs; # nodejs;
+                  in
+                  import ./node-composition.nix {
+                    inherit pkgs nodejs;
                     inherit (pkgs.stdenv.hostPlatform) system;
-                  }).nodeDependencies.override (old: {
-                    # access to path '/nix/store/...-source' is forbidden in restricted mode
-                    src = src;
+                  };
+              in
+              pkgs.stdenv.mkDerivation
 
-                    # dont run the prepare script:
-                    # Error: Cannot find module '/nix/store/...-node-dependencies-jellyfin-web-.../jellyfin-web/scripts/prepare.js
-                    # npm run build:production runs the same command
-                    dontNpmInstall = true;
-                  }));
-                in
-                ''
-                  runHook preBuild
-                  ln -s ${nodeDependencies}/lib/node_modules ./node_modules
-                  export PATH="${nodeDependencies}/bin:$PATH"
-                  npm run build
-                  runHook postBuild
-                '';
+                {
+                  name = "woodpecker-frontend";
 
-              installPhase = ''
-                runHook preInstall
-                mkdir -p $out/share
-                cp -a dist $out/share/jellyfin-web
-                runHook postInstall
-              '';
-            };
+                  src = ./web;
+
+
+                  nativeBuildInputs = [
+                    pkgs.nodejs
+                  ];
+
+                  buildPhase =
+                    let
+                      nodeDependencies = ((import ./node-composition.nix {
+                        inherit pkgs; # nodejs;
+                        inherit (pkgs.stdenv.hostPlatform) system;
+                      }).nodeDependencies.override (old: {
+                        src = ./web;
+
+                        # dont run the prepare script:
+                        # npm run build:production runs the same command
+                        # dontNpmInstall = true;
+                      }));
+                    in
+                    ''
+                      runHook preBuild
+                      ln -s ${nodeDependencies}/lib/node_modules ./node_modules
+                      export PATH="${nodeDependencies}/bin:$PATH"
+                      npm run build
+                      runHook postBuild
+                    '';
+
+                  installPhase = ''
+                    runHook preInstall
+                    mkdir -p $out/share
+                    cp -a dist $out/share/woodpecker-ci
+                    runHook postInstall
+                  '';
+                };
 
             woodpecker-server =
               pkgs.buildGoModule {
