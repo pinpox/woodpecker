@@ -149,8 +149,8 @@
 
                   installPhase = ''
                     runHook preInstall
-                    mkdir -p $out/share
-                    cp -a dist $out/share/woodpecker-ci
+                    mkdir -p $out
+                    cp -a dist/* $out
                     runHook postInstall
                   '';
                 };
